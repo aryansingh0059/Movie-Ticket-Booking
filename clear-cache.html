@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear CineVerse Cache</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .info-item {
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .success {
+            color: #10b981;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .status.cached {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.cleared {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎬 CineVerse Cache Manager</h1>
+        <p>Clear the movie cache to fetch fresh Bollywood and top-rated movies from TMDB</p>
+
+        <div class="info">
+            <div class="info-item">
+                <strong>Movies:</strong> <span id="moviesStatus">Checking...</span>
+            </div>
+            <div class="info-item">
+                <strong>Last Fetch:</strong> <span id="lastFetchStatus">Checking...</span>
+            </div>
+            <div class="info-item">
+                <strong>Movie Count:</strong> <span id="movieCount">0</span>
+            </div>
+        </div>
+
+        <button onclick="clearCache()">Clear Cache & Reload</button>
+        <button onclick="checkStatus()">Refresh Status</button>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        function checkStatus() {
+            const movies = localStorage.getItem('movieBooking_movies');
+            const lastFetch = localStorage.getItem('movieBooking_moviesLastFetch');
+
+            if (movies) {
+                const movieData = JSON.parse(movies);
+                document.getElementById('moviesStatus').textContent = '✓ Cached';
+                document.getElementById('movieCount').textContent = movieData.length;
+
+                // Show some movie titles
+                const titles = movieData.slice(0, 3).map(m => m.title).join(', ');
+                console.log('Current movies:', titles);
+            } else {
+                document.getElementById('moviesStatus').textContent = '✗ Not cached';
+                document.getElementById('movieCount').textContent = '0';
+            }
+
+            if (lastFetch) {
+                const date = new Date(parseInt(lastFetch));
+                document.getElementById('lastFetchStatus').textContent = date.toLocaleString();
+            } else {
+                document.getElementById('lastFetchStatus').textContent = 'Never';
+            }
+        }
+
+        function clearCache() {
+            localStorage.removeItem('movieBooking_movies');
+            localStorage.removeItem('movieBooking_moviesLastFetch');
+
+            document.getElementById('message').innerHTML =
+                '<div class="success">✓ Cache cleared! Redirecting to home page...</div>';
+
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        }
+
+        // Check status on load
+        checkStatus();
+    </script>
+</body>
+
+</html>
