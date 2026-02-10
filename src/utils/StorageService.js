@@ -212,11 +212,16 @@ class StorageService {
     }
 
     // Check if we need to fetch movies from TMDB
+    const existingMovies = localStorage.getItem(STORAGE_KEYS.MOVIES);
+    const lastFetch = localStorage.getItem(STORAGE_KEYS.MOVIES_LAST_FETCH);
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+
     // Fetch from TMDB if: 
     // 1. No movies exist
     // 2. Last fetch was more than 24 hours ago
     // 3. We have sample data (id < 100) but the API is now configured
     const isSampleData = existingMovies && JSON.parse(existingMovies).some(m => m.id < 100);
+
     if (!existingMovies || !lastFetch || parseInt(lastFetch) < oneDayAgo || (isSampleData && TMDBService.isConfigured())) {
       if (TMDBService.isConfigured()) {
         try {
