@@ -8,15 +8,18 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Initialize data on app load
-        StorageService.initializeData();
+        const init = async () => {
+            // Initialize data on app load
+            await StorageService.initializeData();
 
-        // Check if user is already logged in
-        const user = StorageService.getCurrentUser();
-        if (user) {
-            setCurrentUser(user);
-        }
-        setLoading(false);
+            // Check if user is already logged in
+            const user = StorageService.getCurrentUser();
+            if (user) {
+                setCurrentUser(user);
+            }
+            setLoading(false);
+        };
+        init();
     }, []);
 
     const register = (userData) => {
