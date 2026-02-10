@@ -183,6 +183,7 @@ const SHOW_TIMINGS = ['10:00 AM', '1:00 PM', '4:00 PM', '7:00 PM', '10:00 PM'];
 class StorageService {
   // Initialize sample data
   static async initializeData() {
+    console.log('Initializing CineVerse data...');
     // Initialize users and bookings if not present
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
@@ -238,7 +239,7 @@ class StorageService {
             return;
           }
         } catch (error) {
-
+          console.error('TMDB fetch error:', error);
         }
       }
     } else {
@@ -264,6 +265,7 @@ class StorageService {
       localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(SAMPLE_MOVIES));
 
     }
+    console.log('CineVerse initialization complete.');
   }
 
   // User operations

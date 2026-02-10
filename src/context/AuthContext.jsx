@@ -9,15 +9,20 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const init = async () => {
-            // Initialize data on app load
-            await StorageService.initializeData();
+            try {
+                // Initialize data on app load
+                await StorageService.initializeData();
 
-            // Check if user is already logged in
-            const user = StorageService.getCurrentUser();
-            if (user) {
-                setCurrentUser(user);
+                // Check if user is already logged in
+                const user = StorageService.getCurrentUser();
+                if (user) {
+                    setCurrentUser(user);
+                }
+            } catch (error) {
+                console.error('Failed to initialize app data:', error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         init();
     }, []);
