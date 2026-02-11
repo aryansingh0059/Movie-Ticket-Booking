@@ -184,93 +184,113 @@ class StorageService {
   // Initialize sample data
   static async initializeData() {
     console.log('Initializing CineVerse data...');
-    // Initialize users and bookings if not present
-    if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
-      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify([]));
-    }
 
-    // Initialize cinemas (Always update if count is different to reflect new city additions)
-    const existingCinemas = JSON.parse(localStorage.getItem(STORAGE_KEYS.CINEMAS) || '[]');
-    if (existingCinemas.length !== SAMPLE_CINEMAS.length) {
-      const storedMovies = JSON.parse(localStorage.getItem(STORAGE_KEYS.MOVIES) || '[]');
-      let cinemasToStore = [...SAMPLE_CINEMAS];
-
-      // If we have TMDB movies (detected by non-sequential IDs), map them to all cinemas
-      if (storedMovies.length > 0) {
-        const movieIds = storedMovies.map(m => m.id);
-        cinemasToStore = cinemasToStore.map(c => ({
-          ...c,
-          movieIds: movieIds // For prototype, let all cinemas show all movies
-        }));
+    try {
+      // Initialize users and bookings if not present
+      if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify([]));
       }
 
-      localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(cinemasToStore));
+      // Initialize cinemas (Always update if count is different to reflect new city additions)
+      const existingCinemas = JSON.parse(localStorage.getItem(STORAGE_KEYS.CINEMAS) || '[]');
+      if (existingCinemas.length !== SAMPLE_CINEMAS.length) {
+        const storedMovies = JSON.parse(localStorage.getItem(STORAGE_KEYS.MOVIES) || '[]');
+        let cinemasToStore = [...SAMPLE_CINEMAS];
 
-    }
+        // If we have TMDB movies (detected by non-sequential IDs), map them to all cinemas
+        if (storedMovies.length > 0) {
+          const movieIds = storedMovies.map(m => m.id);
+          cinemasToStore = cinemasToStore.map(c => ({
+            ...c,
+            movieIds: movieIds // For prototype, let all cinemas show all movies
+          }));
+        }
 
-    // Check if we need to fetch movies from TMDB
-    const existingMovies = localStorage.getItem(STORAGE_KEYS.MOVIES);
-    const lastFetch = localStorage.getItem(STORAGE_KEYS.MOVIES_LAST_FETCH);
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+        localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(cinemasToStore));
+      }
 
-    // Fetch from TMDB if: 
-    // 1. No movies exist
-    // 2. Last fetch was more than 24 hours ago
-    // 3. We have sample data (id < 100) but the API is now configured
-    const isSampleData = existingMovies && JSON.parse(existingMovies).some(m => m.id < 100);
+      // Check if we need to fetch movies from TMDB
+      const existingMovies = localStorage.getItem(STORAGE_KEYS.MOVIES);
+      const lastFetch = localStorage.getItem(STORAGE_KEYS.MOVIES_LAST_FETCH);
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
 
-    if (!existingMovies || !lastFetch || parseInt(lastFetch) < oneDayAgo || (isSampleData && TMDBService.isConfigured())) {
-      if (TMDBService.isConfigured()) {
-        try {
+      // Fetch from TMDB if: 
+      // 1. No movies exist
+      // 2. Last fetch was more than 24 hours ago
+      // 3. We have sample data (id < 100) but the API is now configured
+      const isSampleData = existingMovies && JSON.parse(existingMovies).some(m => m.id < 100);
 
-          // Fetch mixed collection: now playing + top rated + Indian movies
-          const tmdbMovies = await TMDBService.getMixedMovies();
+      if (!existingMovies || !lastFetch || parseInt(lastFetch) < oneDayAgo || (isSampleData && TMDBService.isConfigured())) {
+        if (TMDBService.isConfigured()) {
+          try {
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('TMDB API timeout')), 5000)
+            );
 
-          if (tmdbMovies && tmdbMovies.length > 0) {
-            // Update cinema movieIds to match TMDB movie IDs
-            const movieIds = tmdbMovies.map(m => m.id);
-            const updatedCinemas = SAMPLE_CINEMAS.map(cinema => ({
-              ...cinema,
-              movieIds: movieIds
-            }));
+            // Fetch mixed collection with timeout: now playing + top rated + Indian movies
+            const tmdbMovies = await Promise.race([
+              TMDBService.getMixedMovies(),
+              timeoutPromise
+            ]);
 
-            localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(tmdbMovies));
-            localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(updatedCinemas));
-            localStorage.setItem(STORAGE_KEYS.MOVIES_LAST_FETCH, Date.now().toString());
+            if (tmdbMovies && tmdbMovies.length > 0) {
+              // Update cinema movieIds to match TMDB movie IDs
+              const movieIds = tmdbMovies.map(m => m.id);
+              const updatedCinemas = SAMPLE_CINEMAS.map(cinema => ({
+                ...cinema,
+                movieIds: movieIds
+              }));
 
-            return;
+              localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(tmdbMovies));
+              localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(updatedCinemas));
+              localStorage.setItem(STORAGE_KEYS.MOVIES_LAST_FETCH, Date.now().toString());
+
+              console.log('CineVerse initialization complete with TMDB data.');
+              return;
+            }
+          } catch (error) {
+            console.error('TMDB fetch error:', error);
+            console.log('Falling back to sample data...');
           }
-        } catch (error) {
-          console.error('TMDB fetch error:', error);
+        }
+      } else {
+        // Movies already exist in storage, just ensure cinemas are mapped to them 
+        // (This fix is for users who already had movies but just got new cinemas)
+        const storedMovies = JSON.parse(existingMovies);
+        const movieIds = storedMovies.map(m => m.id);
+        const cinemas = JSON.parse(localStorage.getItem(STORAGE_KEYS.CINEMAS) || '[]');
+
+        // Update cinemas movieIds if they don't seem to match TMDB IDs
+        if (cinemas.length > 0 && cinemas[0].movieIds.some(id => id < 100)) {
+          const updatedCinemas = cinemas.map(c => ({
+            ...c,
+            movieIds: movieIds
+          }));
+          localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(updatedCinemas));
         }
       }
-    } else {
-      // Movies already exist in storage, just ensure cinemas are mapped to them 
-      // (This fix is for users who already had movies but just got new cinemas)
-      const storedMovies = JSON.parse(existingMovies);
-      const movieIds = storedMovies.map(m => m.id);
-      const cinemas = JSON.parse(localStorage.getItem(STORAGE_KEYS.CINEMAS) || '[]');
 
-      // Update cinemas movieIds if they don't seem to match TMDB IDs
-      if (cinemas.length > 0 && cinemas[0].movieIds.some(id => id < 100)) {
-        const updatedCinemas = cinemas.map(c => ({
-          ...c,
-          movieIds: movieIds
-        }));
-        localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(updatedCinemas));
-
+      // Fallback to sample data if TMDB fetch failed or not needed
+      if (!existingMovies) {
+        localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(SAMPLE_MOVIES));
       }
-    }
 
-    // Fallback to sample data if TMDB fetch failed or not needed
-    if (!existingMovies) {
-      localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(SAMPLE_MOVIES));
-
+      console.log('CineVerse initialization complete.');
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      // Ensure we have at least sample data even if everything fails
+      if (!localStorage.getItem(STORAGE_KEYS.MOVIES)) {
+        localStorage.setItem(STORAGE_KEYS.MOVIES, JSON.stringify(SAMPLE_MOVIES));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.CINEMAS)) {
+        localStorage.setItem(STORAGE_KEYS.CINEMAS, JSON.stringify(SAMPLE_CINEMAS));
+      }
+      console.log('CineVerse initialization complete with fallback data.');
     }
-    console.log('CineVerse initialization complete.');
   }
 
   // User operations
